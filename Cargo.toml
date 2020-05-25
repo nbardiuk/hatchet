@@ -1,0 +1,8 @@
+[package]
+name = "hatchet"
+version = "0.1.0"
+authors = ["Nazarii Bardiuk <nazarii@bardiuk.com>"]
+edition = "2018"
+
+[dependencies]
+chrono = "0.4"
