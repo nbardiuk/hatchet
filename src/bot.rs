@@ -28,6 +28,17 @@ impl Bot {
                 let message = format!("PRIVMSG #{} :{}", channel, user);
                 self.output.insert(0, message);
             }
+            return;
+        }
+
+        let re = Regex::new(r"[^ ]+ PRIVMSG #([^ ]+) :!ping( .*)?").unwrap();
+        if re.is_match(&line) {
+            if let Some(caps) = re.captures_iter(&line).next() {
+                let channel = &caps[1];
+                let message = format!("PRIVMSG #{} :pong", channel);
+                self.output.insert(0, message);
+            }
+            return;
         }
     }
 
@@ -51,7 +62,7 @@ mod specs {
     }
 
     #[test]
-    fn ping() {
+    fn irc_ping() {
         let mut bot = Bot::new("pass", "bot", "channel");
         while bot.next().is_some() {}
 
@@ -75,6 +86,26 @@ mod specs {
         assert_eq!(bot.next(), None);
 
         bot.handle(String::from(":n!u@h PRIVMSG #c :some garbage :!whoami"));
+        assert_eq!(bot.next(), None);
+
+        bot.handle(String::from(":n!u@h PRIVMSG #c :some garbage"));
+        assert_eq!(bot.next(), None);
+    }
+
+    #[test]
+    fn ping() {
+        let mut bot = Bot::new("pass", "bot", "channel");
+        while bot.next().is_some() {}
+
+        bot.handle(String::from(":nick!user@host PRIVMSG #channel :!ping"));
+        assert_eq!(bot.next().expect("nonempty"), "PRIVMSG #channel :pong");
+        assert_eq!(bot.next(), None);
+
+        bot.handle(String::from(":n!u@h PRIVMSG #c :!ping some garbage"));
+        assert_eq!(bot.next().unwrap(), "PRIVMSG #c :pong");
+        assert_eq!(bot.next(), None);
+
+        bot.handle(String::from(":n!u@h PRIVMSG #c :some garbage :!ping"));
         assert_eq!(bot.next(), None);
 
         bot.handle(String::from(":n!u@h PRIVMSG #c :some garbage"));
