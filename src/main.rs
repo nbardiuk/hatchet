@@ -29,7 +29,7 @@ fn main() -> io::Result<()> {
             bot.handle(line);
         }
         while let Some(line) = bot.next() {
-            println!("{} > {}", now(), line);
+            println!("{} > {}", now(), mask(&line));
             output_lines.send(line).unwrap();
         }
     }
@@ -37,6 +37,14 @@ fn main() -> io::Result<()> {
 
 fn now() -> String {
     Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true)
+}
+
+fn mask(s: &str) -> &str {
+    if s.starts_with("PASS") {
+        "PASS qwerty1234"
+    } else {
+        s
+    }
 }
 
 fn read_write(stream: TcpStream) -> io::Result<(Sender<String>, Receiver<String>)> {
