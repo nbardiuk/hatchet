@@ -9,6 +9,7 @@ use std::sync::mpsc::channel;
 use std::sync::mpsc::Receiver;
 use std::sync::mpsc::Sender;
 use std::thread;
+use std::time::Duration;
 
 mod bot;
 
@@ -23,7 +24,7 @@ fn main() -> io::Result<()> {
     let mut bot = Bot::new(&password, &bot_username, &channel_name);
 
     loop {
-        for line in input_lines.try_iter() {
+        if let Ok(line) = input_lines.recv_timeout(Duration::from_millis(50)) {
             println!("{} < {}", now(), line);
             bot.handle(line);
         }
@@ -31,7 +32,6 @@ fn main() -> io::Result<()> {
             println!("{} > {}", now(), line);
             output_lines.send(line).unwrap();
         }
-        //TODO sleep some time???
     }
 }
 
