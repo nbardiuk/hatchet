@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate lazy_static;
+
 use crate::bot::Bot;
 use chrono::prelude::*;
 use std::env;

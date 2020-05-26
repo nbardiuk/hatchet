@@ -4,6 +4,13 @@ pub struct Bot {
     output: Vec<String>,
 }
 
+lazy_static! {
+    static ref COMMAND: Regex = Regex::new(
+        r"^:[^ ]+!(?P<user>[^ ]+)@[^ ]+ PRIVMSG #(?P<channel>[^ ]+) :!(?P<command>[^ ]+)(?: .*)?$"
+    )
+    .unwrap();
+}
+
 impl Bot {
     pub fn new(pass: &str, nick: &str, channel: &str) -> Self {
         let output = vec![
@@ -17,28 +24,20 @@ impl Bot {
     pub fn handle(&mut self, line: String) {
         if line == "PING :tmi.twitch.tv" {
             self.output.insert(0, "PONG :tmi.twitch.tv".to_string());
-            return;
-        }
-
-        let re = Regex::new(r":[^ ]+!([^ ]+)@[^ ]+ PRIVMSG #([^ ]+) :!whoami( .*)?").unwrap();
-        if re.is_match(&line) {
-            if let Some(caps) = re.captures_iter(&line).next() {
-                let user = &caps[1];
-                let channel = &caps[2];
-                let message = format!("PRIVMSG #{} :{}", channel, user);
-                self.output.insert(0, message);
+        } else if let Some(caps) = COMMAND.captures(&line) {
+            let user = &caps[1];
+            let channel = &caps[2];
+            let command = &caps[3];
+            match command {
+                "whoami" => {
+                    let message = format!("PRIVMSG #{} :{}", channel, user);
+                    self.output.insert(0, message);
+                }
+                "ping" => {
+                    self.output.insert(0, format!("PRIVMSG #{} :pong", channel));
+                }
+                _ => {}
             }
-            return;
-        }
-
-        let re = Regex::new(r"[^ ]+ PRIVMSG #([^ ]+) :!ping( .*)?").unwrap();
-        if re.is_match(&line) {
-            if let Some(caps) = re.captures_iter(&line).next() {
-                let channel = &caps[1];
-                let message = format!("PRIVMSG #{} :pong", channel);
-                self.output.insert(0, message);
-            }
-            return;
         }
     }
 
@@ -78,7 +77,7 @@ mod specs {
         while bot.next().is_some() {}
 
         bot.handle(String::from(":nick!user@host PRIVMSG #channel :!whoami"));
-        assert_eq!(bot.next().expect("nonempty"), "PRIVMSG #channel :user");
+        assert_eq!(bot.next().unwrap(), "PRIVMSG #channel :user");
         assert_eq!(bot.next(), None);
 
         bot.handle(String::from(":n!u@h PRIVMSG #c :!whoami some garbage"));
@@ -98,7 +97,7 @@ mod specs {
         while bot.next().is_some() {}
 
         bot.handle(String::from(":nick!user@host PRIVMSG #channel :!ping"));
-        assert_eq!(bot.next().expect("nonempty"), "PRIVMSG #channel :pong");
+        assert_eq!(bot.next().unwrap(), "PRIVMSG #channel :pong");
         assert_eq!(bot.next(), None);
 
         bot.handle(String::from(":n!u@h PRIVMSG #c :!ping some garbage"));
